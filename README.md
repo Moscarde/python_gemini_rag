@@ -10,6 +10,31 @@ Fluxo:
 3. Armazenar `content` + `embedding` na tabela `documents` (vetor pgvector).
 4. Para uma pergunta, gerar embedding da query, recuperar os `TOP_K` chunks mais similares e gerar resposta com o modelo generativo do Gemini.
 
+Arquitetura (alto nível):
+
+```mermaid
+flowchart TB
+  subgraph ING[Ingestao de PDFs]
+    PDF[Arquivo PDF] --> EX[Extrair texto]
+    EX --> CH[Chunking CHUNK_SIZE OVERLAP]
+    CH --> EMB[Gerar embeddings Gemini 3072]
+    EMB --> DB[(Postgres pgvector)]
+  end
+
+  subgraph RAG[Pipeline de Perguntas]
+    Q[Query do usuario] --> EQ[Embedding da query Gemini]
+    EQ --> RET[Busca similaridade TOP_K pgvector]
+    RET --> CTX[Agregacao de contexto MAX_CONTEXT_CHARS]
+    CTX --> GEN[Resposta com Gemini fallback retry]
+    GEN --> A[Resposta final]
+  end
+
+  DB -. fornece contexto .-> RET
+
+
+
+```
+
 ## Requisitos
 
 - Python 3.10+
@@ -111,12 +136,6 @@ modules/
 - Para múltiplos PDFs, reexecute `ingest.py` apontando cada arquivo.
 - Faça rotacionamento de chave da API e monitore limites (429 -> retry/backoff implementado).
 
-## Próximos Passos (Sugestões)
-
-- Adicionar API FastAPI para servir perguntas via HTTP.
-- Implementar cache de embeddings para evitar recalcular o mesmo chunk.
-- Adicionar testes unitários para chunking e busca.
-- Suporte a múltiplos idiomas com detecção de linguagem.
 
 ---
 Qualquer dúvida, abra uma issue ou adapte conforme necessário.
